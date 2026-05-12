@@ -3,7 +3,7 @@
   "displayName": "LLM Balance Monitor",
   "description": "实时监控 LLM 中转站钱包余额，支持多平台 Token 管理",
   "version": "0.0.1",
-  "publisher": "your-publisher",
+  "publisher": "singleparty",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
@@ -23,11 +23,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/llm-balance-monitor"
+    "url": "https://github.com/singleparty/llm-balance-monitor"
   },
   "bugs": {
-    "url": "https://github.com/your-username/llm-balance-monitor/issues"
+    "url": "https://github.com/singleparty/llm-balance-monitor/issues"
   },
+  "license": "MIT",
   "main": "./out/extension.js",
   "activationEvents": [
     "onStartupFinished"
