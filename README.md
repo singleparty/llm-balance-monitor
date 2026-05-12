@@ -1,7 +1,7 @@
 # LLM Balance Monitor
 
 <p align="center">
-  <img src="images/icon.svg" alt="LLM Balance Monitor Logo" width="128" height="128">
+  <img src="images/icon.png" alt="LLM Balance Monitor Logo" width="128" height="128">
 </p>
 
 一个 VS Code 扩展，用于在状态栏中实时显示 LLM 中转站的钱包余额。支持多个平台的 Token 管理，配置自动同步到多设备。
