@@ -1,15 +1,33 @@
 {
-  "name": "status-bar",
-  "displayName": "Status Bar",
-  "description": "A VS Code extension that shows info in the status bar",
+  "name": "llm-balance-monitor",
+  "displayName": "LLM Balance Monitor",
+  "description": "实时监控 LLM 中转站钱包余额，支持多平台 Token 管理",
   "version": "0.0.1",
   "publisher": "your-publisher",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "llm",
+    "balance",
+    "monitor",
+    "status-bar",
+    "bytecat",
+    "openrouter",
+    "token",
+    "wallet"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/llm-balance-monitor"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/llm-balance-monitor/issues"
+  },
   "main": "./out/extension.js",
   "activationEvents": [
     "onStartupFinished"
@@ -17,10 +35,40 @@
   "contributes": {
     "commands": [
       {
-        "command": "statusBar.showTime",
-        "title": "Status Bar: Show Time"
+        "command": "llmBalanceMonitor.manageTokens",
+        "title": "LLM Balance Monitor: Manage Tokens"
+      },
+      {
+        "command": "llmBalanceMonitor.startMonitoring",
+        "title": "LLM Balance Monitor: Start Monitoring"
+      },
+      {
+        "command": "llmBalanceMonitor.stopMonitoring",
+        "title": "LLM Balance Monitor: Stop Monitoring"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "LLM Balance Monitor",
+      "properties": {
+        "llmBalanceMonitor.tokens": {
+          "type": "array",
+          "default": [],
+          "description": "保存的 Tokens 配置",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "enum": ["bytecat", "openrouter"]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
