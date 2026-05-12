@@ -47,7 +47,7 @@ export function startMonitoring(): void {
   // 每 30 秒更新
   monitoringInterval = setInterval(() => {
     void updateBalance()
-  }, 30000)
+  }, 60000)
 }
 
 // 停止余额监控
@@ -79,6 +79,7 @@ export async function getBalance(config: TokenConfig): Promise<string> {
       return ''
     }
   } catch (err) {
+    console.log('get balance fail', err)
     const errorMessage = err instanceof Error ? err.message : String(err)
     vscode.window.showErrorMessage(`获取余额失败: ${errorMessage}`)
     stopMonitoring()
