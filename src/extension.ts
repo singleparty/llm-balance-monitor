@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { STORAGE_KEY, loadConfigs, initOutputChannel } from './utils';
+import { STORAGE_KEY, loadConfigs, initOutputChannel, setGlobalStoragePath } from './utils';
 import { initBalanceMonitor, startMonitoring, stopMonitoring } from './llmBalanceMonitor';
 import { handleMonitorClick } from './commands';
 
@@ -7,6 +7,10 @@ export async function activate(context: vscode.ExtensionContext) {
   // 初始化 Output Channel
   const outputChannel = initOutputChannel();
   context.subscriptions.push(outputChannel);
+
+  // 准备跨窗口共享的缓存目录
+  await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+  setGlobalStoragePath(context.globalStorageUri.fsPath);
 
   // 创建并初始化余额监控项
   const balanceMonitorItem = initBalanceMonitor();

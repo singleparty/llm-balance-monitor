@@ -60,7 +60,9 @@ src/
 - `formatTime()` - 格式化时间为 mm:ss
 - `initOutputChannel()` - 初始化 Output Channel
 - `log()` - 统一的日志函数，支持 Error 对象和完整堆栈输出
-- 常量定义（`STORAGE_KEY`, `SUPPORTED_KEYS`）
+- `setGlobalStoragePath()` - 注入跨窗口共享的缓存目录（由 `activate` 提供）
+- `readBalanceCache()` / `writeBalanceCache()` - 跨窗口余额缓存读写（tmp + rename 原子写入）
+- 常量定义（`STORAGE_KEY`, `SUPPORTED_KEYS`, `CACHE_TTL_MS`, `CACHE_FILE_NAME`）
 
 **commands.ts** - 命令逻辑
 - `handleMonitorClick()` - 处理余额监控项点击事件
@@ -168,5 +170,37 @@ src/
 2. **完整浏览器指纹**：请求头包含 User-Agent、sec-ch-ua-*、sec-fetch-* 等完整浏览器标识
 3. **避免固定频率**：不使用 `setInterval`，改用 `setTimeout` + 随机延迟
 4. **Cookie 完整性**：确保 Cookie 包含 Cloudflare 验证信息（如 `cf_clearance`）
+5. **跨窗口请求去重**：通过共享缓存文件让多窗口场景合并为约 1 份请求/周期（详见下节）
 
 **重要**：修改定时器相关代码时，注意 `setTimeout` 和 `clearTimeout` 的配对使用。
+
+## 代码风格约定
+
+### 单文件组织顺序
+
+每个 `.ts` 文件内部按以下顺序组织：
+
+1. **import** - 第三方和内部模块导入
+2. **type** - `enum`、`interface`、`type` 定义（包括未导出的内部类型）
+3. **常量与模块状态** - `export const`、模块级 `let` 变量
+4. **导出函数** - 对外公开的函数（被外部调用的入口点）
+5. **内部函数** - 仅本文件内部使用的辅助函数（`function` 无 `export`）
+
+用分节注释（`// ===== Section =====`）分隔主要区段，便于扫读。
+
+参考 `src/utils.ts` 的组织方式。
+
+## 跨窗口请求去重
+
+为避免多个 VS Code 窗口同时打开时每个窗口各自发起请求（N 倍流量，显著增加 Cloudflare 拦截风险），实现基于共享缓存文件的轻量去重：
+
+- **缓存位置**：`context.globalStorageUri.fsPath/llm-balance-monitor.json`，VS Code 为扩展提供的全局目录，天然跨窗口共享
+- **缓存结构**：`{ text: string, updatedAt: number }`
+- **TTL**：`CACHE_TTL_MS = 60_000`（60 秒，略短于最小轮询间隔，保证单窗口不会永远命中自己的缓存）
+- **失效策略**：纯 TTL，不校验配置 hash。token 增删后最多 60s 才反映新余额
+- **原子写入**：`fs.writeFileSync(tmp)` + `fs.renameSync(tmp, final)`，避免读到半写文件
+- **命中路径**：`updateBalance()` 先读缓存，TTL 内命中直接渲染状态栏不发请求；miss 才 fetch 并写回缓存
+
+**原理**：由于各窗口轮询间隔是 1-3 分钟随机值，只要任一窗口先写入缓存，其他窗口 60s 内的 tick 都会走缓存分支，整体流量回落到约 1 份/周期。
+
+**不做的事**：锁文件 / leader 选举 / `fs.watch`——保持轻量。代价是两窗口偶发同刻触发时会各发一次请求，概率低。

@@ -1,5 +1,13 @@
 import * as vscode from 'vscode';
-import { loadConfigs, formatTime, TokenConfig, TokenConfigKey, log } from './utils';
+import {
+  loadConfigs,
+  TokenConfig,
+  TokenConfigKey,
+  log,
+  readBalanceCache,
+  writeBalanceCache,
+  CACHE_TTL_MS,
+} from './utils';
 
 let balanceMonitorItem: vscode.StatusBarItem;
 let monitoringInterval: NodeJS.Timeout | undefined;
@@ -19,18 +27,31 @@ export async function updateBalance() {
     return;
   }
   updateBalanceRunning = true;
-  const configs = loadConfigs();
+  try {
+    const configs = loadConfigs();
 
-  if (configs.length > 0) {
+    if (configs.length === 0) {
+      stopMonitoring();
+      balanceMonitorItem.text = `点击配置`;
+      return;
+    }
+
+    // 跨窗口共享缓存：TTL 内直接使用其他窗口已写入的结果
+    const cache = readBalanceCache();
+    if (cache && Date.now() - cache.updatedAt < CACHE_TTL_MS) {
+      balanceMonitorItem.text = cache.text;
+      return;
+    }
+
     const values = (await Promise.all(configs.map(async (item) => ({ ...item, balance: await getBalance(item) }))))
       .map((c) => c.balance)
       .join(' ');
-    balanceMonitorItem.text = `余额: ${values}`;
-  } else {
-    stopMonitoring();
-    balanceMonitorItem.text = `点击配置`;
+    const text = `余额: ${values}`;
+    balanceMonitorItem.text = text;
+    writeBalanceCache(text);
+  } finally {
+    updateBalanceRunning = false;
   }
-  updateBalanceRunning = false;
 }
 
 // 启动余额监控
@@ -75,19 +96,12 @@ export async function getBalance(config: TokenConfig): Promise<string> {
       const response = await fetch('https://www.bytecatcode.org/api/user/self', {
         headers: {
           accept: 'application/json, text/plain, */*',
-          'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
-          'cache-control': 'no-cache',
+          'accept-language': 'zh-CN,zh;q=0.9',
+          'cache-control': 'no-store',
+          'new-api-user': '5282',
           pragma: 'no-cache',
-          'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-          'sec-ch-ua-mobile': '?0',
-          'sec-ch-ua-platform': '"macOS"',
-          'sec-fetch-dest': 'empty',
-          'sec-fetch-mode': 'cors',
-          'sec-fetch-site': 'same-origin',
-          'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           cookie: config.value,
           Referer: 'https://www.bytecatcode.org/console/topup',
-          'Referrer-Policy': 'strict-origin-when-cross-origin',
         },
         method: 'GET',
       });

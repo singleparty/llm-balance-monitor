@@ -2,7 +2,7 @@
   "name": "llm-balance-monitor",
   "displayName": "LLM Balance Monitor",
   "description": "实时监控 LLM 中转站钱包余额，支持多平台 Token 管理",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "singleparty",
   "icon": "images/icon.png",
   "engines": {
