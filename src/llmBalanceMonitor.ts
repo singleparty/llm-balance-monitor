@@ -37,23 +37,32 @@ export async function updateBalance() {
 export function startMonitoring(): void {
   // 清除已存在的定时器
   if (monitoringInterval) {
-    clearInterval(monitoringInterval);
+    clearTimeout(monitoringInterval);
     monitoringInterval = undefined;
   }
 
   // 立即更新一次
   void updateBalance();
 
-  // 每 30 秒更新
-  monitoringInterval = setInterval(() => {
-    void updateBalance();
-  }, 60000);
+  // 每 1-3 分钟随机更新一次，避免被 Cloudflare 识别为机器人
+  const scheduleNext = () => {
+    const baseInterval = 1 * 60 * 1000; // 1 分钟
+    const randomDelay = Math.random() * 2 * 60 * 1000; // 0-2 分钟随机延迟
+    const nextInterval = baseInterval + randomDelay;
+
+    monitoringInterval = setTimeout(() => {
+      void updateBalance();
+      scheduleNext(); // 递归调度下一次
+    }, nextInterval);
+  };
+
+  scheduleNext();
 }
 
 // 停止余额监控
 export function stopMonitoring(): void {
   if (monitoringInterval) {
-    clearInterval(monitoringInterval);
+    clearTimeout(monitoringInterval);
     monitoringInterval = undefined;
   }
 }
@@ -66,14 +75,20 @@ export async function getBalance(config: TokenConfig): Promise<string> {
       const response = await fetch('https://www.bytecatcode.org/api/user/self', {
         headers: {
           accept: 'application/json, text/plain, */*',
-          'accept-language': 'zh-CN,zh;q=0.9',
-          'cache-control': 'no-store',
-          'new-api-user': '5282',
+          'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          'cache-control': 'no-cache',
           pragma: 'no-cache',
+          'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"macOS"',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-origin',
+          'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           cookie: config.value,
           Referer: 'https://www.bytecatcode.org/console/topup',
+          'Referrer-Policy': 'strict-origin-when-cross-origin',
         },
-        body: null,
         method: 'GET',
       });
 
