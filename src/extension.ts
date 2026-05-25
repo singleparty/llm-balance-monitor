@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { STORAGE_KEY, loadConfigs, initOutputChannel, setGlobalStoragePath } from './utils'
+import { STORAGE_KEY, loadConfigs, initOutputChannel, setGlobalStoragePath, log } from './utils'
 import { initBalanceMonitor, startMonitoring, stopMonitoring } from './llmBalanceMonitor'
 import { handleMonitorClick } from './commands'
 
@@ -7,6 +7,8 @@ export async function activate(context: vscode.ExtensionContext) {
   // 初始化 Output Channel
   const outputChannel = initOutputChannel()
   context.subscriptions.push(outputChannel)
+
+  log('activate')
 
   // 准备跨窗口共享的缓存目录
   await vscode.workspace.fs.createDirectory(context.globalStorageUri)

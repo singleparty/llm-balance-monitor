@@ -2,7 +2,7 @@
   "name": "llm-balance-monitor",
   "displayName": "LLM Balance Monitor",
   "description": "实时监控 LLM 中转站钱包余额，支持多平台 Token 管理",
-  "version": "0.0.7",
+  "version": "0.0.10",
   "publisher": "singleparty",
   "icon": "images/icon.png",
   "engines": {
@@ -75,11 +75,12 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run bundle",
+    "bundle": "rm -rf out && esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "watch": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "lint": "eslint src --ext ts",
-    "pretest": "npm run compile && npm run lint",
+    "pretest": "npm run bundle && npm run lint",
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
@@ -87,6 +88,7 @@
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
+    "esbuild": "^0.28.0",
     "eslint": "^8.54.0",
     "typescript": "^5.3.2"
   },
