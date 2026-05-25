@@ -2,7 +2,7 @@
   "name": "llm-balance-monitor",
   "displayName": "LLM Balance Monitor",
   "description": "实时监控 LLM 中转站钱包余额，支持多平台 Token 管理",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "singleparty",
   "icon": "images/icon.png",
   "engines": {
@@ -60,7 +60,10 @@
             "properties": {
               "key": {
                 "type": "string",
-                "enum": ["bytecat", "openrouter"]
+                "enum": [
+                  "bytecat",
+                  "openrouter"
+                ]
               },
               "value": {
                 "type": "string"
@@ -86,5 +89,8 @@
     "@typescript-eslint/parser": "^6.13.1",
     "eslint": "^8.54.0",
     "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "undici": "^8.3.0"
   }
 }
