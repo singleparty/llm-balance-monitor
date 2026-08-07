@@ -14,8 +14,8 @@ export async function addToken(updateCallback: () => void): Promise<void> {
 
   // 输入 value
   const value = await vscode.window.showInputBox({
-    prompt: `输入 ${keyType} 的 Token`,
-    placeHolder: '请输入 Token',
+    prompt: keyType === TokenConfigKey.openrouter ? '输入 OpenRouter API Key' : `输入 ${keyType} 的 Token`,
+    placeHolder: keyType === TokenConfigKey.openrouter ? '请输入 sk-or-v1-xxxxx' : '请输入 Token',
     validateInput: (text) => {
       return text.trim() === '' ? 'Token 不能为空' : null
     }

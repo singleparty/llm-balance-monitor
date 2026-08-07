@@ -19,7 +19,7 @@
 目前支持以下 LLM 中转站：
 
 - ✅ **Bytecat** - 需要提供 Cookie（自动获取余额并显示）
-- 🚧 **OpenRouter** - 配置支持（余额获取功能开发中）
+- ✅ **OpenRouter** - 需要提供 Management API Key（自动获取剩余额度并显示）
 
 更多平台支持正在开发中...
 
@@ -57,7 +57,7 @@ npm run compile
 3. 选择平台类型（Bytecat / OpenRouter）
 4. 输入对应的 Cookie 或 API Key
    - **Bytecat**: 需要提供完整的 Cookie（从浏览器开发者工具获取）
-   - **OpenRouter**: 输入 API Key（格式：`sk-or-v1-xxxxx`）
+   - **OpenRouter**: 输入 Management API Key（格式：`sk-or-v1-xxxxx`）
 5. 完成！余额将自动显示在状态栏
 
 ### 2. 查看余额

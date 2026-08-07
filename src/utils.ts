@@ -7,6 +7,7 @@ import * as path from 'path'
 
 export enum TokenConfigKey {
   bytecat = 'bytecat',
+  openrouter = 'openrouter',
 }
 
 // 配置数据结构
@@ -23,7 +24,7 @@ interface BalanceCache {
 // ===== Constants & module state =====
 
 export const STORAGE_KEY = 'llmBalanceMonitor.tokens'
-export const SUPPORTED_KEYS: Array<TokenConfigKey> = [TokenConfigKey.bytecat]
+export const SUPPORTED_KEYS: Array<TokenConfigKey> = [TokenConfigKey.bytecat, TokenConfigKey.openrouter]
 export const CACHE_TTL_MS = 60_000
 export const CACHE_FILE_NAME = 'llm-balance-monitor.json'
 
@@ -156,4 +157,15 @@ export function getProxyDispatcher(): ProxyAgent | undefined {
     process.env.http_proxy
   log(`代理: ${proxy || '(未配置)'}`)
   return proxy ? new ProxyAgent(proxy) : undefined
+}
+
+export function getTokenIcon(key: TokenConfigKey): string {
+  switch (key) {
+    case TokenConfigKey.bytecat:
+      return '$(octoface)'
+    case TokenConfigKey.openrouter:
+      return '$(fish3-happy)'
+    default:
+      return '$(circle-slash)'
+  }
 }

@@ -5,6 +5,7 @@ import {
   TokenConfig,
   TokenConfigKey,
   log,
+  getTokenIcon,
   readBalanceCache,
   writeBalanceCache,
   CACHE_TTL_MS,
@@ -46,9 +47,10 @@ export async function updateBalance() {
     }
 
     const values = (await Promise.all(configs.map(async (item) => ({ ...item, balance: await getBalance(item) }))))
-      .map((c) => c.balance)
+      .filter((c) => c.balance !== '')
+      .map((c) => `${getTokenIcon(c.key)} ${c.balance}`)
       .join(' ')
-    const text = `余额: ${values}`
+    const text = values.length > 0 ? `余额: ${values}` : '余额: -'
     balanceMonitorItem.text = text
     writeBalanceCache(text)
   } finally {
@@ -125,6 +127,48 @@ export async function getBalance(config: TokenConfig): Promise<string> {
       const res = (await response.json()) as { data: { quota: number } }
       log(`获取 ${config.key} 余额成功`, res.data.quota)
       return (res.data.quota / 500000).toFixed(2)
+    } else if (config.key === TokenConfigKey.openrouter) {
+      log(`开始获取 ${config.key} 余额`)
+
+      const response = await fetch('https://openrouter.ai/api/v1/credits', {
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${config.value}`,
+        },
+        method: 'GET',
+        dispatcher: getProxyDispatcher(),
+      } as RequestInit)
+
+      if (!response.ok) {
+        const responseText = await response.text()
+        const errorDetails = {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: responseText,
+        }
+        log(`获取 ${config.key} 余额失败 - HTTP ${response.status}`, errorDetails)
+        stopMonitoring()
+        return ''
+      }
+
+      const res = (await response.json()) as {
+        data?: {
+          total_credits?: number
+          total_usage?: number
+        }
+      }
+      const totalCredits = res.data?.total_credits
+      const totalUsage = res.data?.total_usage
+      if (typeof totalCredits !== 'number' || typeof totalUsage !== 'number') {
+        log(`获取 ${config.key} 余额失败`, res)
+        stopMonitoring()
+        return ''
+      }
+
+      const balance = totalCredits - totalUsage
+      log(`获取 ${config.key} 余额成功`, { balance, totalCredits, totalUsage })
+      return balance.toFixed(2)
     } else {
       return ''
     }
