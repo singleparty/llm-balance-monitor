@@ -164,7 +164,7 @@ export function getTokenIcon(key: TokenConfigKey): string {
     case TokenConfigKey.bytecat:
       return '$(octoface)'
     case TokenConfigKey.openrouter:
-      return '$(fish3-happy)'
+      return '$(vr)'
     default:
       return '$(circle-slash)'
   }
