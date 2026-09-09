@@ -169,6 +169,65 @@ export async function getBalance(config: TokenConfig): Promise<string> {
       const balance = totalCredits - totalUsage
       log(`获取 ${config.key} 余额成功`, { balance, totalCredits, totalUsage })
       return balance.toFixed(2)
+    } else if (config.key === TokenConfigKey.deepseek) {
+      log(`开始获取 ${config.key} 余额`)
+
+      const response = await fetch('https://api.deepseek.com/user/balance', {
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${config.value}`,
+        },
+        method: 'GET',
+        dispatcher: getProxyDispatcher(),
+      } as RequestInit)
+
+      if (!response.ok) {
+        const responseText = await response.text()
+        const errorDetails = {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: responseText,
+        }
+        log(`获取 ${config.key} 余额失败 - HTTP ${response.status}`, errorDetails)
+        stopMonitoring()
+        return ''
+      }
+
+      const res = (await response.json()) as {
+        is_available?: boolean
+        balance_infos?: Array<{
+          currency?: string
+          total_balance?: string
+          granted_balance?: string
+          topped_up_balance?: string
+        }>
+      }
+      const balanceInfos = Array.isArray(res.balance_infos) ? res.balance_infos : []
+      // 同一账户可能同时存在 CNY / USD 余额，优先展示 CNY，其次 USD
+      const balanceInfo =
+        balanceInfos.find((info) => info.currency === 'CNY') ??
+        balanceInfos.find((info) => info.currency === 'USD') ??
+        balanceInfos[0]
+      if (!balanceInfo || typeof balanceInfo.total_balance !== 'string') {
+        log(`获取 ${config.key} 余额失败`, res)
+        stopMonitoring()
+        return ''
+      }
+
+      const balance = Number(balanceInfo.total_balance)
+      if (!Number.isFinite(balance)) {
+        log(`获取 ${config.key} 余额失败`, res)
+        stopMonitoring()
+        return ''
+      }
+
+      log(`获取 ${config.key} 余额成功`, {
+        balance,
+        currency: balanceInfo.currency,
+        is_available: res.is_available,
+      })
+      return balance.toFixed(2)
     } else {
       return ''
     }

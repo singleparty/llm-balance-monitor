@@ -8,6 +8,7 @@ import * as path from 'path'
 export enum TokenConfigKey {
   bytecat = 'bytecat',
   openrouter = 'openrouter',
+  deepseek = 'deepseek',
 }
 
 // 配置数据结构
@@ -24,7 +25,11 @@ interface BalanceCache {
 // ===== Constants & module state =====
 
 export const STORAGE_KEY = 'llmBalanceMonitor.tokens'
-export const SUPPORTED_KEYS: Array<TokenConfigKey> = [TokenConfigKey.bytecat, TokenConfigKey.openrouter]
+export const SUPPORTED_KEYS: Array<TokenConfigKey> = [
+  TokenConfigKey.bytecat,
+  TokenConfigKey.openrouter,
+  TokenConfigKey.deepseek,
+]
 export const CACHE_TTL_MS = 60_000
 export const CACHE_FILE_NAME = 'llm-balance-monitor.json'
 
@@ -165,6 +170,8 @@ export function getTokenIcon(key: TokenConfigKey): string {
       return '$(octoface)'
     case TokenConfigKey.openrouter:
       return '$(vr)'
+    case TokenConfigKey.deepseek:
+      return '$(dashboard)'
     default:
       return '$(circle-slash)'
   }

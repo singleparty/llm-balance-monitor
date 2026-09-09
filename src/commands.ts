@@ -1,6 +1,18 @@
 import * as vscode from 'vscode'
 import { TokenConfigKey, SUPPORTED_KEYS, loadConfigs, saveConfigs } from './utils'
 
+// 各平台新增时的输入提示
+const KEY_INPUT_HINTS: Partial<Record<TokenConfigKey, { prompt: string; placeholder: string }>> = {
+  [TokenConfigKey.openrouter]: {
+    prompt: '输入 OpenRouter API Key',
+    placeholder: '请输入 sk-or-v1-xxxxx',
+  },
+  [TokenConfigKey.deepseek]: {
+    prompt: '输入 DeepSeek API Key',
+    placeholder: '请输入 sk-... 格式的 API Key',
+  },
+}
+
 // 新增 Token
 export async function addToken(updateCallback: () => void): Promise<void> {
   // 选择 key 类型
@@ -12,10 +24,10 @@ export async function addToken(updateCallback: () => void): Promise<void> {
     return
   }
 
-  // 输入 value
+  const hint = KEY_INPUT_HINTS[keyType as TokenConfigKey]
   const value = await vscode.window.showInputBox({
-    prompt: keyType === TokenConfigKey.openrouter ? '输入 OpenRouter API Key' : `输入 ${keyType} 的 Token`,
-    placeHolder: keyType === TokenConfigKey.openrouter ? '请输入 sk-or-v1-xxxxx' : '请输入 Token',
+    prompt: hint?.prompt ?? `输入 ${keyType} 的 Token`,
+    placeHolder: hint?.placeholder ?? '请输入 Token',
     validateInput: (text) => {
       return text.trim() === '' ? 'Token 不能为空' : null
     }

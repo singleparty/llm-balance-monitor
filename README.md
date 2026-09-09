@@ -20,6 +20,7 @@
 
 - ✅ **Bytecat** - 需要提供 Cookie（自动获取余额并显示）
 - ✅ **OpenRouter** - 需要提供 Management API Key（自动获取剩余额度并显示）
+- ✅ **DeepSeek** - 需要提供 API Key（自动获取账户余额并显示）
 
 更多平台支持正在开发中...
 
@@ -54,10 +55,11 @@ npm run compile
 
 1. 点击状态栏中的 "点击配置" 或余额显示
 2. 选择 "➕ 新增 Token"
-3. 选择平台类型（Bytecat / OpenRouter）
+3. 选择平台类型（Bytecat / OpenRouter / DeepSeek）
 4. 输入对应的 Cookie 或 API Key
    - **Bytecat**: 需要提供完整的 Cookie（从浏览器开发者工具获取）
    - **OpenRouter**: 输入 Management API Key（格式：`sk-or-v1-xxxxx`）
+   - **DeepSeek**: 输入 DeepSeek API Key（格式：`sk-...`，在 [DeepSeek Platform](https://platform.deepseek.com/api_keys) 创建）
 5. 完成！余额将自动显示在状态栏
 
 ### 2. 查看余额
@@ -105,6 +107,10 @@ Preferences: Open User Settings (JSON)
     {
       "key": "openrouter",
       "value": "sk-or-v1-xxxxx"
+    },
+    {
+      "key": "deepseek",
+      "value": "sk-xxxxxxxxxxxxxxxx"
     }
   ]
 }
@@ -122,8 +128,8 @@ Preferences: Open User Settings (JSON)
 
 ```typescript
 interface TokenConfig {
-  key: "bytecat" | "openrouter";  // 平台类型
-  value: string;                   // Cookie 或 API Key
+  key: "bytecat" | "openrouter" | "deepseek";  // 平台类型
+  value: string;                               // Cookie 或 API Key
 }
 ```
 
@@ -139,6 +145,10 @@ interface TokenConfig {
     {
       "key": "openrouter",
       "value": "sk-or-v1-xxxxx"
+    },
+    {
+      "key": "deepseek",
+      "value": "sk-xxxxxxxxxxxxxxxx"
     }
   ]
 }

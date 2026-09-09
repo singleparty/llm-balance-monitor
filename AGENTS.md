@@ -1,13 +1,13 @@
-# CLAUDE.md
+# AGENTS.md
 
-本文件为 Claude Code (claude.ai/code) 在此代码库中工作时提供指导。
+本文件为在此代码库中工作的 AI 编码代理（例如 Claude Code、Codex 等）提供指导。开始工作前请阅读并遵循本文件中的约定。
 
 ## 项目概述
 
 这是一个 VS Code 扩展，用于在状态栏中显示 LLM 中转站的钱包余额。该扩展提供：
 - 余额实时监控（每 30 秒自动刷新）
 - Token/Cookie 管理功能（新增、删除）
-- 支持 Bytecat 平台余额获取
+- 支持 Bytecat、OpenRouter、DeepSeek 平台余额获取
 - 配置通过 VS Code Settings Sync 多设备同步
 
 ## 开发命令
@@ -66,7 +66,7 @@ src/
 
 **commands.ts** - 命令逻辑
 - `handleMonitorClick()` - 处理余额监控项点击事件
-- `addToken()` - 新增 Token（支持 bytecat、openrouter）
+- `addToken()` - 新增 Token（支持 bytecat、openrouter、deepseek）
 - `deleteToken()` - 删除 Token
 
 **llmBalanceMonitor.ts** - 余额监控管理
@@ -88,7 +88,7 @@ src/
 - 使用 setTimeout 递归调度而非 setInterval，实现随机间隔
 
 ### 2. Token/Cookie 管理
-- 支持的平台：`bytecat`、`openrouter`
+- 支持的平台：`bytecat`、`openrouter`、`deepseek`
 - 允许同一平台的多个 Token/Cookie
 - 点击状态栏显示操作菜单：新增、删除
 - 新增流程：选择类型 → 输入值 → 保存
@@ -101,7 +101,13 @@ src/
   - 保留两位小数显示
   - 使用完整的浏览器请求头（User-Agent、sec-ch-ua-*、sec-fetch-* 等）模拟真实浏览器，避免 Cloudflare 拦截
   - HTTP 错误时记录完整的响应状态码、响应头和响应体
-- **OpenRouter**: 配置支持（余额获取功能待实现）
+- **OpenRouter**: 通过 Management API Key 调用额度接口
+  - API: `https://openrouter.ai/api/v1/credits`
+  - 剩余额度 = `total_credits` - `total_usage`，保留两位小数显示
+- **DeepSeek**: 通过 API Key 调用官方余额接口
+  - API: `https://api.deepseek.com/user/balance`
+  - 请求头：`Authorization: Bearer <API Key>`
+  - 优先展示 CNY 余额，其次 USD，余额为字符串需转数字后保留两位小数
 
 ### 4. 日志系统
 - 使用 VS Code Output Channel 记录日志
@@ -147,6 +153,10 @@ src/
     {
       "key": "openrouter",
       "value": "sk-or-v1-xxxxx"
+    },
+    {
+      "key": "deepseek",
+      "value": "sk-xxxxxxxxxxxxxxxx"
     }
   ]
 }
