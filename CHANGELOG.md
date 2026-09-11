@@ -7,6 +7,9 @@
 
 ## [未发布]
 
+### 修复
+- 修复 bytecat 余额获取返回 403 的问题：请求不再自己挂代理（改由 VS Code 统一按 `http.proxy` / `http.noProxy` 处理），失败且配置了代理时用 undici 自身的 `fetch` + 显式直连 Agent 重试一次
+
 ### 新增
 - 完善的 README 文档
 - 项目 Logo 和图标

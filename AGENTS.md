@@ -214,3 +214,23 @@ src/
 **原理**：由于各窗口轮询间隔是 1-3 分钟随机值，只要任一窗口先写入缓存，其他窗口 60s 内的 tick 都会走缓存分支，整体流量回落到约 1 份/周期。
 
 **不做的事**：锁文件 / leader 选举 / `fs.watch`——保持轻量。代价是两窗口偶发同刻触发时会各发一次请求，概率低。
+
+## 代理出口与 Cloudflare 挑战
+
+**请求侧不自己挂代理。** 余额请求统一用全局 `fetch`，代理由 VS Code 按 `http.noProxy` → `http.proxy` → 环境变量自行解析注入；`getConfiguredProxy()`（`src/utils.ts`）只负责判断"用户到底配没配代理"，决定失败后要不要走直连兜底。
+
+**代理出口 IP 常被 Cloudflare 判定为机器人。** 在同一台机器上实测：
+
+| 请求方式 | 结果 |
+|--------|------|
+| 直连 `https://www.bytecatcode.org/api/user/self` | 401 `AUTH_UNAUTHORIZED`（请求到达源站，cf-ray colo = LAX） |
+| 经由本地代理（`127.0.0.1:7890`） | 403 + `cf-mitigated: challenge`（"Just a moment..." 挑战页，colo = CDG） |
+
+结论：**补 `user-agent` / `sec-ch-ua-*` / `sec-fetch-*` 等浏览器指纹无法绕过挑战**，能否通过只取决于出口 IP（带完整指纹的 curl 和 undici 都照样 403）。所以不要在请求头里堆指纹，改为在 HTTP 层兜底：`fetchWithDirectFallback()`（`src/llmBalanceMonitor.ts`）先正常发请求；只有**失败（抛错或被挑战）且 `getConfiguredProxy()` 返回了代理**时，才直连重试一次。OpenRouter / DeepSeek 对代理不敏感，直连与代理都返回 401（无凭证时的正常响应）。
+
+**关键坑：自己传 dispatcher 没有意义，`dispatcher: undefined` 也换不来直连。** VS Code 会替换扩展宿主里的 `globalThis.fetch`（`@vscode/proxy-agent` 的 `createFetchPatch`，受 `http.fetchAdditionalSupport` 控制），拿到调用方的 dispatcher 后只读取 `allowH2` / `ca`，然后自己 `new Agent()` / `new ProxyAgent()` 覆盖上去（`http.proxySupport` 默认 `override`）。所以：
+- 想让请求直连，必须绕开这层注入 —— 用 `undici` 模块自身的 `fetch` + 显式 `new Agent()`（见 `directFetch` / `DirectAgent` / `fetchDirect`）。
+- 想改代理行为，改 VS Code 设置（`http.noProxy` / `http.proxy`）或环境变量，改代码没用。
+- 该补丁会读 `http.noProxy` 设置和 `NO_PROXY` 环境变量当作绕行名单，且 `http.noProxy` 非空时 `NO_PROXY` 会被忽略。
+
+若某天台站必须走代理，换一个未被 Cloudflare 标记的出口节点、或把域名加进 `http.noProxy` 即可，代码无需改动。

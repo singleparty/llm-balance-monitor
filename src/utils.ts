@@ -1,5 +1,4 @@
 import * as vscode from 'vscode'
-import { ProxyAgent } from 'undici'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -152,16 +151,17 @@ function getCacheFilePath(): string | undefined {
   return path.join(_globalStoragePath, CACHE_FILE_NAME)
 }
 
-// 读取 VS Code http.proxy（回退到环境变量），返回 undici Dispatcher 或 undefined
-export function getProxyDispatcher(): ProxyAgent | undefined {
+// 读取 VS Code http.proxy（回退到环境变量），返回代理地址或 undefined
+// 说明：请求本身不需要自己挂代理（VS Code 会按 http.proxy / http.noProxy 注入），
+// 这里只用来判断"用户到底配没配代理"，决定失败后要不要走直连兜底
+export function getConfiguredProxy(): string | undefined {
   const proxy =
     vscode.workspace.getConfiguration('http').get<string>('proxy') ||
     process.env.HTTPS_PROXY ||
     process.env.HTTP_PROXY ||
     process.env.https_proxy ||
     process.env.http_proxy
-  log(`代理: ${proxy || '(未配置)'}`)
-  return proxy ? new ProxyAgent(proxy) : undefined
+  return proxy || undefined
 }
 
 export function getTokenIcon(key: TokenConfigKey): string {

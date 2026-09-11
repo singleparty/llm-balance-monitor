@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import { Agent, fetch as undiciFetch } from 'undici'
 
 import {
   loadConfigs,
@@ -9,12 +10,20 @@ import {
   readBalanceCache,
   writeBalanceCache,
   CACHE_TTL_MS,
-  getProxyDispatcher,
+  getConfiguredProxy,
 } from './utils'
+
+// undici 自带的类型与 @types/node 内置的 undici-types 存在版本差异（RequestInit / Response 不兼容），
+// 这里把直连用的 fetch / Agent 收敛成局部宽松签名
+type DirectFetch = (url: string, init: Record<string, unknown>) => Promise<Response>
+
+const directFetch = undiciFetch as unknown as DirectFetch
+const DirectAgent = Agent as unknown as new () => object
 
 let balanceMonitorItem: vscode.StatusBarItem
 let monitoringInterval: NodeJS.Timeout | undefined
 let updateBalanceRunning: boolean
+let directDispatcher: object | undefined
 
 // 初始化余额监控项
 export function initBalanceMonitor(): vscode.StatusBarItem {
@@ -97,7 +106,7 @@ export async function getBalance(config: TokenConfig): Promise<string> {
     if (config.key === TokenConfigKey.bytecat) {
       log(`开始获取 ${config.key} 余额`)
 
-      const response = await fetch('https://www.bytecatcode.org/api/user/self', {
+      const response = await fetchWithDirectFallback('https://www.bytecatcode.org/api/user/self', {
         headers: {
           accept: 'application/json, text/plain, */*',
           'accept-language': 'zh-CN,zh;q=0.9',
@@ -107,8 +116,7 @@ export async function getBalance(config: TokenConfig): Promise<string> {
           Referer: 'https://www.bytecatcode.org/console/topup',
         },
         method: 'GET',
-        dispatcher: getProxyDispatcher(),
-      } as RequestInit)
+      })
 
       // 检查 HTTP 状态码
       if (!response.ok) {
@@ -130,14 +138,13 @@ export async function getBalance(config: TokenConfig): Promise<string> {
     } else if (config.key === TokenConfigKey.openrouter) {
       log(`开始获取 ${config.key} 余额`)
 
-      const response = await fetch('https://openrouter.ai/api/v1/credits', {
+      const response = await fetchWithDirectFallback('https://openrouter.ai/api/v1/credits', {
         headers: {
           accept: 'application/json',
           Authorization: `Bearer ${config.value}`,
         },
         method: 'GET',
-        dispatcher: getProxyDispatcher(),
-      } as RequestInit)
+      })
 
       if (!response.ok) {
         const responseText = await response.text()
@@ -172,14 +179,13 @@ export async function getBalance(config: TokenConfig): Promise<string> {
     } else if (config.key === TokenConfigKey.deepseek) {
       log(`开始获取 ${config.key} 余额`)
 
-      const response = await fetch('https://api.deepseek.com/user/balance', {
+      const response = await fetchWithDirectFallback('https://api.deepseek.com/user/balance', {
         headers: {
           accept: 'application/json',
           Authorization: `Bearer ${config.value}`,
         },
         method: 'GET',
-        dispatcher: getProxyDispatcher(),
-      } as RequestInit)
+      })
 
       if (!response.ok) {
         const responseText = await response.text()
@@ -237,4 +243,53 @@ export async function getBalance(config: TokenConfig): Promise<string> {
     stopMonitoring()
     return ''
   }
+}
+
+// 请求统一先走全局 fetch：代理由 VS Code 按 http.proxy / http.noProxy / 环境变量自行处理，
+// 调用方不需要（也无法）通过 dispatcher 干预。
+// 只有在请求失败、且确实配置了代理时，才用 undici 自带的 fetch + 直连 Agent 重试一次：
+// 代理出口 IP 常被 Cloudflare 判定为机器人并返回挑战页（403 + cf-mitigated: challenge），
+// 换成直连往往就能过；用 undici 自带的 fetch 是因为 VS Code 会给全局 fetch 注入代理。
+async function fetchWithDirectFallback(url: string, init: RequestInit): Promise<Response> {
+  const proxy = getConfiguredProxy()
+
+  let response: Response
+  try {
+    response = await fetch(url, init)
+  } catch (err) {
+    if (!proxy) {
+      throw err
+    }
+    log(`请求失败，改用直连重试（代理: ${proxy}）: ${url}`, err)
+    return fetchDirect(url, init)
+  }
+
+  if (!proxy || !isCloudflareChallenge(response)) {
+    return response
+  }
+
+  log(`请求被 Cloudflare 挑战，改用直连重试（代理: ${proxy}）: ${url}`)
+  try {
+    await response.body?.cancel()
+  } catch {
+    // 忽略：仅用于释放连接
+  }
+
+  const direct = await fetchDirect(url, init)
+  if (isCloudflareChallenge(direct)) {
+    log(`直连同样被 Cloudflare 挑战，可把域名加入 VS Code 的 http.noProxy 或更换代理节点: ${url}`)
+  }
+  return direct
+}
+
+// 绕过 VS Code 对 globalThis.fetch 的代理注入，走真正的直连
+function fetchDirect(url: string, init: RequestInit): Promise<Response> {
+  if (!directDispatcher) {
+    directDispatcher = new DirectAgent()
+  }
+  return directFetch(url, { ...init, dispatcher: directDispatcher } as unknown as Record<string, unknown>)
+}
+
+function isCloudflareChallenge(response: Response): boolean {
+  return response.status === 403 && response.headers.get('cf-mitigated') === 'challenge'
 }
